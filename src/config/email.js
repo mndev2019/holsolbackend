@@ -49,7 +49,7 @@ const sendEmail = async (data) => {
       data,
       {
         headers: {
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": process.env.BREVO_KEY,
           "Content-Type": "application/json",
         },
       }
