@@ -1,7 +1,7 @@
 const WebUser = require("../models/WebUser");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const transporter = require("../config/email");
+const sendEmail = require("../config/email");
 
 
 // ================= REGISTER =================
@@ -194,16 +194,24 @@ exports.forgotPassword = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = otp;
-    user.otpExpire = Date.now() + 5 * 60 * 1000; // 5 min
+    user.otpExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
     user.isOtpVerified = false;
 
     await user.save();
 
-    const mailOptions = {
-      from: `"Holsol Solar" <${process.env.MAIL_FROM}>`,
-      to: email,
+    // 📧 Send Email using Brevo API
+    await sendEmail({
+      sender: {
+        name: "Holsol Solar",
+        email: process.env.MAIL_FROM,
+      },
+      to: [
+        {
+          email: email,
+        },
+      ],
       subject: "🔐 Password Reset OTP - Holsol",
-      html: `
+      htmlContent: `
         <div style="font-family: Arial; padding:20px">
           <h2 style="color:#0047FF">Holsol Password Reset</h2>
           <p>Your OTP is:</p>
@@ -212,9 +220,7 @@ exports.forgotPassword = async (req, res) => {
           <p style="color:#888">Do not share this code with anyone.</p>
         </div>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.status(200).json({
       success: true,
@@ -222,10 +228,10 @@ exports.forgotPassword = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("FORGOT PASSWORD ERROR:", error);
+    console.log("FORGOT PASSWORD ERROR:", error.message);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to send OTP",
     });
   }
 };

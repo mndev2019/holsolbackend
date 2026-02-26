@@ -38,16 +38,28 @@
 
 // module.exports = transporter;
 
-const nodemailer = require("nodemailer");
+// otp send via brevo
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-});
+const axios = require("axios");
 
-module.exports = transporter;
+const sendEmail = async (data) => {
+  try {
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      data,
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("BREVO ERROR:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+module.exports = sendEmail;
