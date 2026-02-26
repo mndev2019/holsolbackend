@@ -175,9 +175,18 @@ exports.loginWebUser = async (req, res) => {
 //   }
 // };
 
+
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
 
     const user = await WebUser.findOne({
       email: email.toLowerCase(),
@@ -199,11 +208,11 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // 📧 Send Email using Brevo API
-    await sendEmail({
+    // 📧 Send Email using Brevo
+    const emailResponse = await sendEmail({
       sender: {
         name: "Holsol Solar",
-        email: process.env.MAIL_FROM,
+        email: process.env.MAIL_FROM, // MUST be verified in Brevo
       },
       to: [
         {
@@ -222,20 +231,23 @@ exports.forgotPassword = async (req, res) => {
       `,
     });
 
+    // Optional: log Brevo response
+    console.log("Brevo response:", emailResponse);
+
     res.status(200).json({
       success: true,
       message: "OTP sent to your email",
     });
 
   } catch (error) {
-    console.log("FORGOT PASSWORD ERROR:", error.message);
+    console.error("FORGOT PASSWORD ERROR:", error.response?.data || error.message);
+
     res.status(500).json({
       success: false,
       message: "Failed to send OTP",
     });
   }
 };
-
 // exports.verifyOtp = async (req, res) => {
 //     try {
 //         const { email, otp } = req.body;
