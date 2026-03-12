@@ -1,7 +1,9 @@
 const Enquiry = require("../models/Enquiry");
-const transporter = require("../config/email");
+const sendEmail = require("../config/email");
+const axios = require("axios");
 
 // ✅ Create Enquiry
+
 // exports.createEnquiry = async (req, res) => {
 //   try {
 //     const { name, mobile, state, city, pincode } = req.body;
@@ -21,6 +23,47 @@ const transporter = require("../config/email");
 //       pincode,
 //     });
 
+//     // ✅ Email Content
+//     // const mailOptions = {
+//     //   from: process.env.EMAIL_USER,
+//     //   to: ["info@ramot.cloud", "info@holsolindia.com"], // 👈 2 emails
+//     //   subject: "New Enquiry Received",
+//     //   html: `
+//     //     <h2>New Enquiry Details</h2>
+//     //     <p><b>Name:</b> ${name}</p>
+//     //     <p><b>Mobile:</b> ${mobile}</p>
+//     //     <p><b>State:</b> ${state}</p>
+//     //     <p><b>City:</b> ${city}</p>
+//     //     <p><b>Pincode:</b> ${pincode}</p>
+//     //   `,
+//     // };
+//      // ✅ Brevo email payload
+//     const emailData = {
+//       sender: {
+//         name: "Holsol India",
+//         email: process.env.MAIL_FROM, // verified sender
+//       },
+//       to: [
+//         { email: "info@ramot.cloud" },
+//         { email: "info@holsolindia.com" },
+//       ],
+//       subject: "New Enquiry Received",
+//       htmlContent: `
+//         <h2>New Enquiry Details</h2>
+//         <p><b>Name:</b> ${name}</p>
+//         <p><b>Mobile:</b> ${mobile}</p>
+//         <p><b>State:</b> ${state}</p>
+//         <p><b>City:</b> ${city}</p>
+//         <p><b>Pincode:</b> ${pincode}</p>
+//       `,
+//     };
+
+//     // ✅ Send email via Brevo
+//     await sendEmail(emailData);
+
+//     // // ✅ Send Email
+//     // await transporter.sendMail(mailOptions);
+
 //     res.status(201).json({
 //       success: true,
 //       message: "Enquiry submitted successfully",
@@ -33,6 +76,10 @@ const transporter = require("../config/email");
 //     });
 //   }
 // };
+
+
+
+
 exports.createEnquiry = async (req, res) => {
   try {
     const { name, mobile, state, city, pincode } = req.body;
@@ -44,6 +91,7 @@ exports.createEnquiry = async (req, res) => {
       });
     }
 
+    // 1️⃣ Save to DB
     const enquiry = await Enquiry.create({
       name,
       mobile,
@@ -52,12 +100,18 @@ exports.createEnquiry = async (req, res) => {
       pincode,
     });
 
-    // ✅ Email Content
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: ["info@ramot.cloud", "info@holsolindia.com"], // 👈 2 emails
+    // 2️⃣ Send Email via Brevo
+    await sendEmail({
+      sender: {
+        name: "Holsol India",
+        email: process.env.MAIL_FROM,
+      },
+      to: [
+        { email: "info@ramot.cloud" },
+        { email: "info@holsolindia.com" },
+      ],
       subject: "New Enquiry Received",
-      html: `
+      htmlContent: `
         <h2>New Enquiry Details</h2>
         <p><b>Name:</b> ${name}</p>
         <p><b>Mobile:</b> ${mobile}</p>
@@ -65,20 +119,38 @@ exports.createEnquiry = async (req, res) => {
         <p><b>City:</b> ${city}</p>
         <p><b>Pincode:</b> ${pincode}</p>
       `,
-    };
+    });
 
-    // ✅ Send Email
-    await transporter.sendMail(mailOptions);
+    // 3️⃣ Push Lead to LeadSquared
+    const leadSquaredURL = `https://${process.env.LEADSQUARED_HOST}/v2/LeadManagement.svc/Lead.Capture?accessKey=${process.env.LEADSQUARED_ACCESS_KEY}&secretKey=${process.env.LEADSQUARED_SECRET_KEY}`;
+
+    const leadPayload = [
+      { Attribute: "FirstName", Value: name },
+      { Attribute: "Mobile", Value: mobile },
+      { Attribute: "State", Value: state },
+      { Attribute: "City", Value: city },
+      { Attribute: "PostalCode", Value: pincode },
+      { Attribute: "Source", Value: "Website Popup Form" }
+    ];
+
+    await axios.post(leadSquaredURL, leadPayload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
     res.status(201).json({
       success: true,
-      message: "Enquiry submitted successfully",
+      message: "Enquiry submitted & synced to LeadSquared",
       data: enquiry,
     });
+
   } catch (error) {
+    console.error("LeadSquared Error:", error.response?.data || error.message);
+
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Something went wrong",
     });
   }
 };
