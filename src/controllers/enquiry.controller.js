@@ -122,7 +122,7 @@ exports.createEnquiry = async (req, res) => {
     });
 
     // 3️⃣ Push Lead to LeadSquared
-    const leadSquaredURL = `https://${process.env.LEADSQUARED_HOST}/v2/LeadManagement.svc/Lead.Capture?accessKey=${process.env.LEADSQUARED_ACCESS_KEY}&secretKey=${process.env.LEADSQUARED_SECRET_KEY}`;
+    const leadSquaredURL = `${process.env.LEADSQUARED_HOST}/v2/LeadManagement.svc/Lead.Capture?accessKey=${process.env.LEADSQUARED_ACCESS_KEY}&secretKey=${process.env.LEADSQUARED_SECRET_KEY}`;
 
     const leadPayload = [
       { Attribute: "FirstName", Value: name },
@@ -132,7 +132,7 @@ exports.createEnquiry = async (req, res) => {
       { Attribute: "PostalCode", Value: pincode },
       { Attribute: "Source", Value: "Website Popup Form" }
     ];
-
+console.log("LeadSquared URL:", leadSquaredURL);
     await axios.post(leadSquaredURL, leadPayload, {
       headers: {
         "Content-Type": "application/json",
@@ -141,11 +141,12 @@ exports.createEnquiry = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Enquiry submitted & synced to LeadSquared",
+      message: "Enquiry submitted",
       data: enquiry,
     });
 
-  } catch (error) {
+  } 
+  catch (error) {
     console.error("LeadSquared Error:", error.response?.data || error.message);
 
     res.status(500).json({
@@ -153,6 +154,16 @@ exports.createEnquiry = async (req, res) => {
       message: "Something went wrong",
     });
   }
+  //  catch (error) {
+
+  // console.error("FULL ERROR:", error);
+  // console.error("ERROR RESPONSE:", error.response?.data);
+  // console.error("ERROR MESSAGE:", error.message);
+
+  // res.status(500).json({
+  //   success: false,
+  //   message: error.response?.data || error.message,
+  // });};
 };
 
 
