@@ -66,13 +66,20 @@ exports.updatePopup = async (req, res) => {
       });
     }
 
-    // 🧹 delete old image if new uploaded
-    if (req.file && popup.image) {
-      const oldImagePath = path.join(process.cwd(), "uploads", popup.image);
-      fs.existsSync(oldImagePath) && fs.unlinkSync(oldImagePath);
+    // ✅ Only update if new image uploaded
+    if (req.file) {
+      // delete old image
+      if (popup.image) {
+        const oldImagePath = path.join(process.cwd(), "uploads", popup.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
 
       popup.image = req.file.filename;
     }
+
+    // ❗ IMPORTANT: do nothing if no file
 
     await popup.save();
 
