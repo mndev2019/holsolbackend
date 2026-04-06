@@ -1,4 +1,3 @@
-// models/Enquiry.js
 const mongoose = require("mongoose");
 
 const enquirySchema = new mongoose.Schema(
@@ -11,5 +10,8 @@ const enquirySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ✅ performance boost
+enquirySchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Enquiry", enquirySchema);

@@ -4,22 +4,25 @@ const teamSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true, // ✅ member name
+      required: true,
       trim: true,
     },
     designation: {
       type: String,
-      required: true, // ✅ role / position
+      required: true,
       trim: true,
     },
     image: {
       type: String,
-      required: true, // ✅ image URL
+      required: true,
     },
   },
   {
-    timestamps: true, // createdAt & updatedAt
+    timestamps: true,
   }
 );
+
+// ✅ performance improvement (important)
+teamSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Team", teamSchema);

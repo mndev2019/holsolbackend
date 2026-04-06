@@ -24,7 +24,7 @@ exports.createProduct = async (req, res) => {
             message: "Product created successfully",
             data: {
                 ...product._doc,
-                image: `uploads/${product.image}`, // full path for frontend
+                image: `uploads/${product.image}`,
             },
         });
     } catch (error) {
@@ -38,11 +38,13 @@ exports.createProduct = async (req, res) => {
 // ✅ Get all products
 exports.getProducts = async (req, res) => {
     try {
-        const products = await Product.find().sort({ createdAt: -1 });
+        const products = await Product.find()
+            .sort({ createdAt: -1 })
+            .lean();
 
         const updatedProducts = products.map(product => ({
-            ...product._doc,
-            image: `uploads/${product.image}`, // full path for frontend
+            ...product,
+            image: `uploads/${product.image}`,
         }));
 
         res.status(200).json({
@@ -56,49 +58,48 @@ exports.getProducts = async (req, res) => {
         });
     }
 };
-
 // ✅ Update product
 exports.updateProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title } = req.body;
+    try {
+        const { id } = req.params;
+        const { title } = req.body;
 
-    const product = await Product.findById(id);
+        const product = await Product.findById(id);
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found",
+            });
+        }
+
+        // delete old image
+        if (req.file && product.image) {
+            const oldPath = path.join(process.cwd(), "uploads", product.image);
+            if (fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        }
+
+        if (title) product.title = title;
+        if (req.file) product.image = req.file.filename;
+
+        await product.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Product updated successfully",
+            data: {
+                ...product._doc,
+                image: `uploads/${product.image}`,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
-
-    // 🧹 old image delete if new image uploaded
-    if (req.file && product.image) {
-      const oldImagePath = path.join(process.cwd(), "uploads", product.image);
-
-      fs.existsSync(oldImagePath) && fs.unlinkSync(oldImagePath);
-    }
-
-    // update fields
-    if (title) product.title = title;
-    if (req.file) product.image = req.file.filename;
-
-    await product.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Product updated successfully",
-      data: {
-        ...product._doc,
-        image: `uploads/${product.image}`,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
 };
 
 
@@ -116,14 +117,11 @@ exports.deleteProduct = async (req, res) => {
             });
         }
 
-        // Correct absolute path
         const imagePath = path.join(process.cwd(), "uploads", product.image);
 
-        fs.unlink(imagePath, err => {
-            if (err) {
-                console.error("Failed to delete image file:", err);
-            }
-        });
+        if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+        }
 
         res.status(200).json({
             success: true,

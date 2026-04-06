@@ -36,16 +36,19 @@ exports.createTeam = async (req, res) => {
   }
 };
 
-// ✅ Get all team members
+// ✅ Get all team members (optimized)
 exports.getTeam = async (req, res) => {
   try {
-    const team = await Team.find().sort({ createdAt: -1 });
+
+
+    const team = await Team.find()
+      .sort({ createdAt: -1 })
+      .lean();
 
     const updatedTeam = team.map(member => ({
-      ...member._doc,
+      ...member,
       image: `uploads/${member.image}`,
     }));
-
     res.status(200).json({
       success: true,
       data: updatedTeam,
@@ -73,18 +76,15 @@ exports.updateTeam = async (req, res) => {
       });
     }
 
-    // 🧹 old image delete if new image uploaded
+    // ✅ delete old image safely
     if (req.file && team.image) {
       const oldImagePath = path.join(process.cwd(), "uploads", team.image);
 
-      fs.unlink(oldImagePath, err => {
-        if (err) {
-          console.error("Old image delete failed:", err);
-        }
-      });
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
     }
 
-    // update fields
     if (name) team.name = name;
     if (designation) team.designation = designation;
     if (req.file) team.image = req.file.filename;
@@ -107,7 +107,6 @@ exports.updateTeam = async (req, res) => {
   }
 };
 
-
 // ✅ Delete team member
 exports.deleteTeam = async (req, res) => {
   try {
@@ -124,11 +123,10 @@ exports.deleteTeam = async (req, res) => {
 
     const imagePath = path.join(process.cwd(), "uploads", team.image);
 
-    fs.unlink(imagePath, err => {
-      if (err) {
-        console.error("Failed to delete image file:", err);
-      }
-    });
+    // ✅ safe delete
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
 
     res.status(200).json({
       success: true,

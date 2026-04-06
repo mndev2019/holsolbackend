@@ -2,80 +2,7 @@ const Enquiry = require("../models/Enquiry");
 const sendEmail = require("../config/email");
 const axios = require("axios");
 
-// ✅ Create Enquiry
 
-// exports.createEnquiry = async (req, res) => {
-//   try {
-//     const { name, mobile, state, city, pincode } = req.body;
-
-//     if (!name || !mobile || !state || !city || !pincode) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "All fields are required",
-//       });
-//     }
-
-//     const enquiry = await Enquiry.create({
-//       name,
-//       mobile,
-//       state,
-//       city,
-//       pincode,
-//     });
-
-//     // ✅ Email Content
-//     // const mailOptions = {
-//     //   from: process.env.EMAIL_USER,
-//     //   to: ["info@ramot.cloud", "info@holsolindia.com"], // 👈 2 emails
-//     //   subject: "New Enquiry Received",
-//     //   html: `
-//     //     <h2>New Enquiry Details</h2>
-//     //     <p><b>Name:</b> ${name}</p>
-//     //     <p><b>Mobile:</b> ${mobile}</p>
-//     //     <p><b>State:</b> ${state}</p>
-//     //     <p><b>City:</b> ${city}</p>
-//     //     <p><b>Pincode:</b> ${pincode}</p>
-//     //   `,
-//     // };
-//      // ✅ Brevo email payload
-//     const emailData = {
-//       sender: {
-//         name: "Holsol India",
-//         email: process.env.MAIL_FROM, // verified sender
-//       },
-//       to: [
-//         { email: "info@ramot.cloud" },
-//         { email: "info@holsolindia.com" },
-//       ],
-//       subject: "New Enquiry Received",
-//       htmlContent: `
-//         <h2>New Enquiry Details</h2>
-//         <p><b>Name:</b> ${name}</p>
-//         <p><b>Mobile:</b> ${mobile}</p>
-//         <p><b>State:</b> ${state}</p>
-//         <p><b>City:</b> ${city}</p>
-//         <p><b>Pincode:</b> ${pincode}</p>
-//       `,
-//     };
-
-//     // ✅ Send email via Brevo
-//     await sendEmail(emailData);
-
-//     // // ✅ Send Email
-//     // await transporter.sendMail(mailOptions);
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Enquiry submitted successfully",
-//       data: enquiry,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
 
 
 
@@ -154,27 +81,26 @@ console.log("LeadSquared URL:", leadSquaredURL);
       message: "Something went wrong",
     });
   }
-  //  catch (error) {
-
-  // console.error("FULL ERROR:", error);
-  // console.error("ERROR RESPONSE:", error.response?.data);
-  // console.error("ERROR MESSAGE:", error.message);
-
-  // res.status(500).json({
-  //   success: false,
-  //   message: error.response?.data || error.message,
-  // });};
+ 
 };
 
 
 // ✅ Get all Enquiries
 exports.getEnquiry = async (req, res) => {
   try {
-    const enquiries = await Enquiry.find().sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
+    const enquiries = await Enquiry.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(); // ✅ faster
 
     res.status(200).json({
       success: true,
       data: enquiries,
+      page,
     });
   } catch (error) {
     res.status(500).json({

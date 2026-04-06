@@ -16,8 +16,11 @@ const contactSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: true // createdAt & updatedAt
+    timestamps: true
   }
 );
+
+// ✅ performance improvement
+contactSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Contact", contactSchema);
