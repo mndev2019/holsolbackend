@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const slugify = require("slugify");
 
 const blogSchema = new mongoose.Schema(
   {
@@ -16,15 +17,37 @@ const blogSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    // ✅ UPDATED IMAGE FIELD
     image: {
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
+    },
+
+    slug: {
       type: String,
-      required: true,
+      unique: true,
     },
   },
   { timestamps: true }
 );
 
-// ✅ performance improvement
 blogSchema.index({ createdAt: -1 });
+
+blogSchema.pre("save", function () {
+  if (this.isModified("title") || !this.slug) {
+    this.slug = slugify(this.title, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+  }
+});
 
 module.exports = mongoose.model("Blog", blogSchema);

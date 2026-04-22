@@ -7,7 +7,7 @@ const router = express.Router();
 
 // router.post("/api/login", login);
 
-const upload = require("../config/multer");
+const upload = require("../middleware/upload");
 const {
   createPopup,
   getPopups,
@@ -23,6 +23,7 @@ const { createProduct,
 const {
   createBlog,
   getBlogs,
+  getSingleBlog,
   updateBlog,
   deleteBlog,
 } = require("../controllers/blog.controller");
@@ -47,6 +48,7 @@ const { registerWebUser, loginWebUser, forgotPassword, verifyOtp, resetPassword,
 
 const profileController = require("../controllers/profile.controller");
 const { isWebUser } = require("../middlewares/webAuth");
+const {getSitemap} = require("../controllers/sitemap.controller")
 
 
 
@@ -68,6 +70,7 @@ router.delete("/api/product/:id", deleteProduct);
 //blog routes 
 router.post("/api/blog", upload.single("image"), createBlog);
 router.get("/api/blog", getBlogs);
+router.get("/api/blog/:slug", getSingleBlog);
 router.put("/api/blog/:id", upload.single("image"), updateBlog);
 router.delete("/api/blog/:id", deleteBlog);
 
@@ -148,6 +151,9 @@ router.put(
   upload.single("document"),
   profileController.uploadAdminDocument
 );
+
+// sitemap route
+router.get("/sitemap.xml", getSitemap);
 
 
 

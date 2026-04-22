@@ -1,8 +1,9 @@
-const fs = require("fs");
-const path = require("path");
 const Blog = require("../models/Blog");
+const cloudinary = require("cloudinary").v2;
 
-// ✅ Create blog
+//
+// ✅ CREATE BLOG
+//
 exports.createBlog = async (req, res) => {
   try {
     const { title, shortDescription, description } = req.body;
@@ -18,16 +19,16 @@ exports.createBlog = async (req, res) => {
       title,
       shortDescription,
       description,
-      image: req.file.filename,
+      image: {
+        url: req.file.path,
+        public_id: req.file.filename,
+      },
     });
 
     res.status(201).json({
       success: true,
       message: "Blog created successfully",
-      data: {
-        ...blog._doc,
-        image: `uploads/${blog.image}`,
-      },
+      data: blog,
     });
   } catch (error) {
     res.status(500).json({
@@ -37,24 +38,19 @@ exports.createBlog = async (req, res) => {
   }
 };
 
-// ✅ Get all blogs (optimized)
+
+//
+// ✅ GET ALL BLOGS
+//
 exports.getBlogs = async (req, res) => {
   try {
-        // const start = Date.now(); // ✅ START
-
     const blogs = await Blog.find()
       .sort({ createdAt: -1 })
-      .lean(); // ✅ performance boost
-
-    const updatedBlogs = blogs.map(blog => ({
-      ...blog, // ✅ instead of _doc
-      image: `uploads/${blog.image}`,
-    }));
-    // console.log("BLOG_API:", Date.now() - start, "ms"); // ✅ END
+      .lean();
 
     res.status(200).json({
       success: true,
-      data: updatedBlogs,
+      data: blogs,
     });
   } catch (error) {
     res.status(500).json({
@@ -64,13 +60,23 @@ exports.getBlogs = async (req, res) => {
   }
 };
 
-// ✅ Update blog
-exports.updateBlog = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, shortDescription, description } = req.body;
 
-    const blog = await Blog.findById(id);
+//
+// ✅ GET SINGLE BLOG (BY SLUG)
+//
+exports.getSingleBlog = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug is required",
+      });
+    }
+
+    const blog = await Blog.findOne({ slug }).lean();
+
     if (!blog) {
       return res.status(404).json({
         success: false,
@@ -78,14 +84,51 @@ exports.updateBlog = async (req, res) => {
       });
     }
 
-    if (req.file) {
-      const oldImagePath = path.join(process.cwd(), "uploads", blog.image);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-      }
-      blog.image = req.file.filename;
+    res.status(200).json({
+      success: true,
+      data: blog,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+//
+// ✅ UPDATE BLOG
+//
+exports.updateBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, shortDescription, description } = req.body;
+
+    const blog = await Blog.findById(id);
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
     }
 
+    // 🔥 If new image uploaded
+    if (req.file) {
+      // delete old image from Cloudinary
+      if (blog.image?.public_id) {
+        await cloudinary.uploader.destroy(blog.image.public_id);
+      }
+
+      // assign new image
+      blog.image = {
+        url: req.file.path,
+        public_id: req.file.filename,
+      };
+    }
+
+    // update fields
     if (title) blog.title = title;
     if (shortDescription) blog.shortDescription = shortDescription;
     if (description) blog.description = description;
@@ -95,10 +138,7 @@ exports.updateBlog = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Blog updated successfully",
-      data: {
-        ...blog._doc,
-        image: `uploads/${blog.image}`,
-      },
+      data: blog,
     });
   } catch (error) {
     res.status(500).json({
@@ -108,7 +148,10 @@ exports.updateBlog = async (req, res) => {
   }
 };
 
-// ✅ Delete blog
+
+//
+// ✅ DELETE BLOG
+//
 exports.deleteBlog = async (req, res) => {
   try {
     const { id } = req.params;
@@ -122,16 +165,9 @@ exports.deleteBlog = async (req, res) => {
       });
     }
 
-    if (blog.image) {
-      const filename = blog.image.includes("/")
-        ? blog.image.split("/").pop()
-        : blog.image;
-
-      const imagePath = path.join(process.cwd(), "uploads", filename);
-
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+    // 🔥 delete image from Cloudinary
+    if (blog.image?.public_id) {
+      await cloudinary.uploader.destroy(blog.image.public_id);
     }
 
     res.status(200).json({
